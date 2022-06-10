@@ -1,5 +1,4 @@
-﻿using IronOcr;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,31 +7,88 @@ namespace ImageRecognize.API.Helpers
 {
     public class FilterBlocks
     {
-        public static string GetName(OcrResult.Block[] blocks)
+        public static string GetName(string[] blocks)
         {
             try
             {
-                var nome = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("NOME"));
-                if (nome != null)
+                for (int i = 0; i < blocks.Count(); i++)
                 {
-                    if (nome.Text.ToUpper().Split("NOME").Count() > 0)
+                    if (blocks[i].ToUpper().Contains("NOME"))
                     {
-                        return RemoveExcept(nome.Text.ToUpper().Split("NOME")[1].Replace("E\n", "").Replace("\n", "").Trim());
+                        return RemoveExcept(blocks[i + 1].ToUpper().Replace("E\n", "").Replace("\n", "").Trim());
                     }
                 }
 
-                nome = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("OME"));
-                if (nome != null)
-                    return RemoveExcept(nome.Text.ToUpper().Replace("OME", "").Replace("\n", "").Trim());
+                return String.Empty;
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public static string GetIdentidade(string[] blocks)
+        {
+            try
+            {
+                for (int i = 0; i < blocks.Count(); i++)
+                {
+                    if (blocks[i].ToUpper().Contains("IDENTIDADE"))
+                    {
+                        return RemoveExcept(blocks[i + 1].ToUpper().Replace("E\n", "").Replace("\n", "").Trim(), false, true);
+                    }
+                }
+
+                return String.Empty;
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public static string GetOrgaoEmissor(string[] blocks)
+        {
+            try
+            {
 
                 for (int i = 0; i < blocks.Count(); i++)
                 {
-                    if (blocks[i].Text.ToUpper().Contains("IDENTIDADE"))
+                    if (blocks[i].ToUpper().Contains("IDENTIDADE"))
                     {
-                        if (blocks[i - 1].Lines.Count() > 1)
-                            return RemoveExcept(blocks[i - 1].Lines[1].Text.ToUpper().Replace("NOME", "").Replace("\n", "").Trim(),true, false,false, false,true,false, false);
+                        string orgaoEmissor = RemoveExcept(blocks[i + 1].ToUpper().Trim(), true, false, false, false, false, false, true);
+                        var split = orgaoEmissor.Split("/");
+                        for (int x = 0; x < split.Count(); x++)
+                        {
+                            if (split[x].Contains("SSP"))
+                                return "SSP";
 
-                        return RemoveExcept(blocks[i - 1].Text.ToUpper().Replace("NOME", "").Replace("\n", "").Trim());
+                            return split[i];
+                        }
+                    }
+                }
+                return String.Empty;
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public static string GetUF(string[] blocks)
+        {
+            try
+            {
+                for (int i = 0; i < blocks.Count(); i++)
+                {
+                    if (blocks[i].ToUpper().Contains("IDENTIDADE"))
+                    {
+                        string orgaoEmissor = RemoveExcept(blocks[i + 1].ToUpper().Trim(), true, false, false, false, false, false, true);
+                        var split = orgaoEmissor.Split("/");
+                        for (int x = 0; x < split.Count(); x++)
+                        {
+                            return split[x + 1].Substring(0, 2);
+                        }
                     }
                 }
 
@@ -44,36 +100,15 @@ namespace ImageRecognize.API.Helpers
             }
         }
 
-        public static string GetIdentidade(OcrResult.Block[] blocks)
+        public static string GetCPF(string[] blocks)
         {
             try
             {
-                var identidade = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("IDENTIDADE"));
-
-                if (identidade != null)
-                    return RemoveExcept(identidade.Lines[1].Text.ToUpper().Trim(), false, true);
-
-                return String.Empty;
-            }
-            catch
-            {
-                return String.Empty;
-            }
-        }
-
-        public static string GetCPF(OcrResult.Block[] blocks)
-        {
-            try
-            {
-
-                var identidade = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("IDENTIDADE"));
-
-                for (int i = 0; i < identidade.Lines.Count(); i++)
+                for (int i = 0; i < blocks.Count(); i++)
                 {
-                    if (identidade.Lines[i].Text.ToUpper().Contains("CPF"))
+                    if (blocks[i].ToUpper().Contains("NASCIMEN"))
                     {
-                        var cpf = identidade.Lines[i + 1].Text.Replace("B", "8");
-                        cpf = RemoveExcept(cpf, false, true).Substring(0, 11);
+                        string cpf = RemoveExcept(blocks[i + 1].ToUpper().Trim(), false, true).Substring(0, 11);
                         return cpf;
                     }
                 }
@@ -85,48 +120,20 @@ namespace ImageRecognize.API.Helpers
                 return String.Empty;
             }
         }
-        public static string GetDataNascimento(OcrResult.Block[] blocks)
+
+
+        public static string GetDataNascimento(string[] blocks)
         {
             try
             {
-
-                var identidade = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("IDENTIDADE"));
-
-                for (int i = 0; i < identidade.Lines.Count(); i++)
+                for (int i = 0; i < blocks.Count(); i++)
                 {
-                    if (identidade.Lines[i].Text.ToUpper().Contains("CPF"))
+                    if (blocks[i].ToUpper().Contains("NASCIMEN"))
                     {
-                        var cpf = identidade.Lines[i + 1].Text.Replace("B", "8");
+                        var cpf = blocks[i + 1].Replace("B", "8");
                         var split = cpf.Split("/");
                         string dataNascimento = split[0].Substring(split[0].Length - 2) + "/" + split[1] + "/" + split[2];
-                        return dataNascimento.Replace("'","").Trim();
-                    }
-                }
-
-                return String.Empty;
-            }
-            catch
-            {
-                return String.Empty;
-            }
-        }
-
-        public static string GetOrgaoEmissor(OcrResult.Block[] blocks)
-        {
-            try
-            {
-                var format = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("IDENTIDADE"));
-
-                if (format != null)
-                {
-                    string orgaoEmissor = RemoveExcept(format.Lines[1].Text.ToUpper().Trim(), true, false, false, false, false, false, true);
-                    var split = orgaoEmissor.Split("/");
-                    for (int i = 0; i < split.Count(); i++)
-                    {
-                        if (split[i].Contains("SSP"))
-                            return "SSP";
-
-                        return split[i];
+                        return dataNascimento.Replace("'", "").Trim();
                     }
                 }
                 return String.Empty;
@@ -137,49 +144,25 @@ namespace ImageRecognize.API.Helpers
             }
         }
 
-        public static string GetUF(OcrResult.Block[] blocks)
-        {
-            try
-            {
-                var format = blocks.FirstOrDefault(t => t.Text.ToUpper().Contains("IDENTIDADE"));
 
-                if (format != null)
-                {
-                    string orgaoEmissor = RemoveExcept(format.Lines[1].Text.ToUpper().Trim(), true, false, false, false, false, false, true);
-                    var split = orgaoEmissor.Split("/");
-                    for (int i = 0; i < split.Count(); i++)
-                    {
-                        return split[i+1].Substring(0,2);
-                    }
-                }
-                return String.Empty;
-            }
-            catch
-            {
-                return String.Empty;
-            }
-        }
 
-        public static string GetPai(OcrResult.Block[] blocks)
+        public static string GetPai(string[] blocks)
         {
             try
             {
                 for (int i = 0; i < blocks.Count(); i++)
                 {
-                    var identidade = blocks[i].Text.Contains("FILIA");
-                    if (identidade)
+                    if (blocks[i].ToUpper().Contains("FILIA"))
                     {
                         string nomePai = "";
-                        nomePai = blocks[i].Lines[1].Text;
-                        if (blocks[i + 1].Text.Replace("\n","") != string.Empty)
-                            if (blocks[i + 1].Text.Replace("\n", "").Length < 15)
-                                nomePai += " " + blocks[i + 1].Text.Replace("\n", "");
+                        nomePai = blocks[i + 1];
+                        if (blocks[i + 2].Replace("\n", "") != string.Empty)
+                            if (blocks[i + 2].Replace("\n", "").Length < 15)
+                                nomePai += " " + blocks[i + 2].Replace("\n", "");
 
-                        return nomePai;                        
+                        return nomePai;
                     }
                 }
-
-                
                 return String.Empty;
             }
             catch
@@ -188,23 +171,22 @@ namespace ImageRecognize.API.Helpers
             }
         }
 
-        public static string GetMae(OcrResult.Block[] blocks)
+        public static string GetMae(string[] blocks)
         {
             try
             {
                 for (int i = 0; i < blocks.Count(); i++)
                 {
-                    var identidade = blocks[i].Text.Contains("FILIA");
-                    if (identidade)
+                    if (blocks[i].ToUpper().Contains("FILIA"))
                     {
                         string nomeMae = "";
-                        if (blocks[i + 1].Text.Replace("\n", "") != string.Empty)
+                        if (blocks[i + 2].Replace("\n", "") != string.Empty)
                         {
-                            if (blocks[i + 1].Text.Replace("\n", "").Length > 15)
-                                nomeMae += " " + blocks[i + 1].Text.Replace("\n", "");
+                            if (blocks[i + 2].Replace("\n", "").Length > 15)
+                                nomeMae += " " + blocks[i + 2].Replace("\n", "");
                             else
                             {
-                                nomeMae += " " + blocks[i + 2].Text.Replace("\n", "");
+                                nomeMae += " " + blocks[i + 3].Replace("\n", "");
                             }
                         }
 
@@ -212,7 +194,6 @@ namespace ImageRecognize.API.Helpers
                     }
                 }
 
-
                 return String.Empty;
             }
             catch
@@ -221,18 +202,19 @@ namespace ImageRecognize.API.Helpers
             }
         }
 
-        public static string GetValidade(OcrResult.Block[] blocks)
+        public static string GetNumeroRegistro(string[] blocks)
         {
             try
             {
                 for (int i = 0; i < blocks.Count(); i++)
                 {
-                    var validade = blocks[i].Text.Contains("VALIDADE");
-                    if (validade)
+                    if (blocks[i].ToUpper().Contains("VALIDADE"))
                     {
-                        var words = blocks[i].Words.Where(t => t.Text.Contains("/")).ToList();
-                        if (words.Count > 0)
-                            return words.FirstOrDefault().Text.Replace("'", "").Trim();
+                        var validade = blocks[i + 1].Replace("B", "8");
+                        var split = validade.Split(" ");
+                        var numeroRegistro = split.FirstOrDefault(t => t.Length > 4);
+                        if (numeroRegistro != null)
+                            return numeroRegistro;
                     }
                 }
                 return String.Empty;
@@ -243,18 +225,19 @@ namespace ImageRecognize.API.Helpers
             }
         }
 
-        public static string GetPrimeiraHabilitacao(OcrResult.Block[] blocks)
+        public static string GetValidade(string[] blocks)
         {
             try
             {
                 for (int i = 0; i < blocks.Count(); i++)
                 {
-                    var validade = blocks[i].Text.Contains("VALIDADE");
-                    if (validade)
+                    if (blocks[i].ToUpper().Contains("VALIDADE"))
                     {
-                        var words = blocks[i].Words.Where(t => t.Text.Contains("/")).ToList();
-                        if (words.Count > 0)
-                            return words.LastOrDefault().Text.Replace("'", "").Trim();
+                        var validade = blocks[i + 1].Replace("B", "8");
+                        var split = validade.Split(" ");
+                        var dataValidade = split.FirstOrDefault(t => t.Contains("/"));
+                        if (dataValidade != null)
+                            return dataValidade;
                     }
                 }
                 return String.Empty;
@@ -265,18 +248,61 @@ namespace ImageRecognize.API.Helpers
             }
         }
 
-        public static string GetDataEmissao(OcrResult.Block[] blocks)
+        public static string GetPrimeiraHabilitacao(string[] blocks)
         {
             try
             {
                 for (int i = 0; i < blocks.Count(); i++)
                 {
-                    var validade = blocks[i].Text.Contains("EMISSÃO");
-                    if (validade)
+                    if (blocks[i].ToUpper().Contains("VALIDADE"))
                     {
-                        var words = blocks[i].Words.Where(t => t.Text.Contains("/")).ToList();
-                        if (words.Count > 0)
-                            return words.FirstOrDefault().Text.Replace("'", "").Trim();
+                        var validade = blocks[i + 1].Replace("B", "8");
+                        var split = validade.Split(" ");
+                        var dataValidade = split.LastOrDefault(t => t.Contains("/"));
+                        if (dataValidade != null)
+                            return dataValidade;
+                    }
+                }
+                return String.Empty;
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public static string GetDataEmissao(string[] blocks)
+        {
+            try
+            {
+                for (int i = 0; i < blocks.Count(); i++)
+                {
+                    if (blocks[i].ToUpper().Contains("EMISS"))
+                    {
+                        var emissao = blocks[i + 1].Replace("B", "8");
+                        var split = emissao.Split(" ");
+                        var dataEmissao = split.LastOrDefault(t => t.Contains("/"));
+                        if (dataEmissao != null)
+                            return dataEmissao;
+                    }
+                }
+                return String.Empty;
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public static string GetLocalEmissao(string[] blocks)
+        {
+            try
+            {
+                for (int i = 0; i < blocks.Count(); i++)
+                {
+                    if (blocks[i].ToUpper().Contains("LOCAL"))
+                    {
+                        return blocks[i + 1];
                     }
                 }
                 return String.Empty;

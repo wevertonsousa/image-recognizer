@@ -1,22 +1,31 @@
 ﻿using ImageRecognize.API.Helpers;
 using ImageRecognize.API.Model;
-using IronOcr;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenCvSharp;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
+using Tesseract;
 
 namespace ImageRecognize.API.Controllers
 {
+    /// <summary>
+    /// API Recognize CNH
+    /// </summary>
     [ApiController]
-    [Route("[controller]")]
+    [Route("[controller]")]    
     public class CNHRecognizeController : ControllerBase
     {
+        private readonly IWebHostEnvironment _env;
+
+        /// <summary>
+        /// Recognize CNH Controller
+        /// </summary>
+        /// <param name="env"></param>
+        public CNHRecognizeController(IWebHostEnvironment env)
+        {
+            _env = env;
+        }
         /// <summary>
         /// Recognize CNH
         /// </summary>
@@ -26,55 +35,40 @@ namespace ImageRecognize.API.Controllers
         public CNH Index(IFormFile image)
         {
             CNH cnh = new CNH();
+            string textSearch = string.Empty;
             using (MemoryStream memoryStream = new MemoryStream())
             {
                 image.CopyTo(memoryStream);
-                using var img = Image.FromStream(memoryStream);
-                var bmp = (Bitmap)img;
-                var Ocr = new IronTesseract
+                var fileBytes = memoryStream.ToArray();           
+                using (var engine = new TesseractEngine((_env.ContentRootPath + "/tessdata"), "por", EngineMode.Default))
                 {
-                    Language = OcrLanguage.Portuguese,
-                    Configuration = new TesseractConfiguration
-                    {
-                        EngineMode = TesseractEngineMode.TesseractAndLstm,
-                        TesseractVersion = TesseractVersion.Tesseract5,
-                        BlackListCharacters  = "~`$#^*_}{][|\\",
-                        PageSegmentationMode = TesseractPageSegmentationMode.Auto
-                    }
-                };
-
-                bmp = ImagePreProcessing.OptimizeOCR(bmp);
-                bmp = ImagePreProcessing.Grayscale(bmp);
-                bmp = ImagePreProcessing.Contrast(bmp, 70);
-
-                using (var Input = new OcrInput())
-                {
-                    Input.AddImage(bmp);
-                    Input.Deskew();           
-
-                    var Result = Ocr.Read(Input);
-
-                    cnh.Nome = FilterBlocks.GetName(Result.Blocks);
-                    cnh.Identidade = FilterBlocks.GetIdentidade(Result.Blocks);
-                    cnh.OrgaoEmissor = FilterBlocks.GetOrgaoEmissor(Result.Blocks);
-                    cnh.UF = FilterBlocks.GetUF(Result.Blocks);       
-                    cnh.CPF = FilterBlocks.GetCPF(Result.Blocks);
-                    cnh.DataNascimento = FilterBlocks.GetDataNascimento(Result.Blocks);
-                    cnh.Pai = FilterBlocks.GetPai(Result.Blocks);
-                    cnh.Mae = FilterBlocks.GetMae(Result.Blocks);
-                    cnh.Validade = FilterBlocks.GetValidade(Result.Blocks);
-                    cnh.PrimeiraHabilitacao = FilterBlocks.GetPrimeiraHabilitacao(Result.Blocks);
-                    cnh.DataEmissao = FilterBlocks.GetDataEmissao(Result.Blocks);
+                    using var imgPix = Pix.LoadFromMemory(fileBytes);
+                    using var page = engine.Process(imgPix);
+                    textSearch = page.GetText();
                 }
 
-                string file = DateTime.Now.ToString("ddMMyyyyHHmmss")+".jpg";
-                bmp.Save("C:/ImageProcesssing/"+ file);
-            }
+                var split = textSearch.Split("\n");
+                split = split.Where(x => !string.IsNullOrEmpty(x.Trim())).ToArray();
 
-            
+                if (split.Count() > 0)
+                {
+                    cnh.Nome = FilterBlocks.GetName(split);
+                    cnh.Identidade = FilterBlocks.GetIdentidade(split);
+                    cnh.OrgaoEmissor = FilterBlocks.GetOrgaoEmissor(split);
+                    cnh.UF = FilterBlocks.GetUF(split);
+                    cnh.CPF = FilterBlocks.GetCPF(split);
+                    cnh.DataNascimento = FilterBlocks.GetDataNascimento(split);
+                    cnh.Pai = FilterBlocks.GetPai(split);
+                    cnh.Mae = FilterBlocks.GetMae(split);
+                    cnh.NumeroRegistro = FilterBlocks.GetNumeroRegistro(split);
+                    cnh.Validade = FilterBlocks.GetValidade(split);
+                    cnh.PrimeiraHabilitacao = FilterBlocks.GetPrimeiraHabilitacao(split);
+                    cnh.DataEmissao = FilterBlocks.GetDataEmissao(split);
+                    cnh.LocalEmissao = FilterBlocks.GetLocalEmissao(split);
+                }
+            }
             return cnh;
         }
-
 
     }
 }
